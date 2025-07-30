@@ -2,7 +2,6 @@ use crate::chunk_type::ChunkType;
 use crc::{CRC_32_ISO_HDLC, Crc};
 use std::convert::TryFrom;
 use std::fmt::{Display, Formatter};
-use std::str::FromStr;
 use std::string::FromUtf8Error;
 
 #[derive(PartialEq, Eq)]
@@ -94,6 +93,7 @@ impl Display for Chunk {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     fn testing_chunk() -> Chunk {
         let data_length: u32 = 42;

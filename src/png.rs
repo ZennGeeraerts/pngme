@@ -11,19 +11,19 @@ pub struct Png {
 impl Png {
     pub const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
 
-    fn new(chunks: Vec<Chunk>) -> Self {
+    pub fn new(chunks: Vec<Chunk>) -> Self {
         Self { chunks }
     }
 
-    fn from_chunks(chunks: Vec<Chunk>) -> Png {
+    pub fn from_chunks(chunks: Vec<Chunk>) -> Png {
         Png::new(chunks)
     }
 
-    fn append_chunk(&mut self, chunk: Chunk) {
+    pub fn append_chunk(&mut self, chunk: Chunk) {
         self.chunks.push(chunk);
     }
 
-    fn remove_first_chunk(&mut self, chunk_type: &str) -> Result<Chunk, String> {
+    pub fn remove_first_chunk(&mut self, chunk_type: &str) -> Result<Chunk, String> {
         let chunk_type = ChunkType::from_str(chunk_type).unwrap();
 
         if let Some(pos) = self
@@ -37,15 +37,15 @@ impl Png {
         Err("No chunk with chunk type found".to_string())
     }
 
-    fn header(&self) -> &[u8; 8] {
+    pub fn header(&self) -> &[u8; 8] {
         return &Self::STANDARD_HEADER;
     }
 
-    fn chunks(&self) -> &[Chunk] {
+    pub fn chunks(&self) -> &[Chunk] {
         &self.chunks
     }
 
-    fn chunk_by_type(&self, chunk_type: &str) -> Option<&Chunk> {
+    pub fn chunk_by_type(&self, chunk_type: &str) -> Option<&Chunk> {
         let chunk_type = ChunkType::from_str(chunk_type).unwrap();
 
         if let Some(pos) = self
@@ -59,7 +59,7 @@ impl Png {
         return None;
     }
 
-    fn as_bytes(&self) -> Vec<u8> {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&Self::STANDARD_HEADER);
 
