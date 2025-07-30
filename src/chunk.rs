@@ -5,6 +5,7 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use std::string::FromUtf8Error;
 
+#[derive(PartialEq, Eq)]
 pub struct Chunk {
     chunk_type: ChunkType,
     data: Vec<u8>,
@@ -13,31 +14,40 @@ pub struct Chunk {
 const PNG_CRC: Crc<u32> = Crc::<u32>::new(&CRC_32_ISO_HDLC);
 
 impl Chunk {
-    fn new(chunk_type: ChunkType, data: Vec<u8>) -> Self {
+    pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Self {
         Self { chunk_type, data }
     }
 
-    fn length(&self) -> usize {
-        self.data.len()
+    pub fn length(&self) -> u32 {
+        self.data.len() as u32
     }
 
-    fn chunk_type(&self) -> &ChunkType {
+    pub fn chunk_type(&self) -> &ChunkType {
         &self.chunk_type
     }
 
-    fn data(&self) -> &[u8] {
+    pub fn data(&self) -> &[u8] {
         self.data.as_ref()
     }
 
-    fn crc(&self) -> u32 {
+    pub fn crc(&self) -> u32 {
         let mut digest = PNG_CRC.digest();
         digest.update(&self.chunk_type.bytes());
         digest.update(&self.data);
         digest.finalize()
     }
 
-    fn data_as_string(&self) -> Result<String, FromUtf8Error> {
+    pub fn data_as_string(&self) -> Result<String, FromUtf8Error> {
         String::from_utf8(self.data.clone())
+    }
+
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&self.length().to_be_bytes());
+        bytes.extend_from_slice(&self.chunk_type.bytes());
+        bytes.extend_from_slice(self.data());
+        bytes.extend_from_slice(&self.crc().to_be_bytes());
+        return bytes;
     }
 }
 
@@ -49,8 +59,8 @@ impl TryFrom<&[u8]> for Chunk {
         }
 
         let length = u32::from_be_bytes(bytes[0..4].try_into().unwrap());
-        let expected_length = (bytes.len() - 4 - 4 - 4) as u32;
-        if length != expected_length {
+        let max_length = (bytes.len() - 4 - 4 - 4) as u32;
+        if length > max_length {
             return Err("Not enough bytes for declared length".to_string());
         }
 
