@@ -57,19 +57,30 @@ impl TryFrom<&[u8]> for Chunk {
             return Err("Too few bytes to be a valid chunk".to_string());
         }
 
-        let length = u32::from_be_bytes(bytes[0..4].try_into().unwrap());
+        let length =
+            u32::from_be_bytes(bytes[0..4].try_into().map_err(|_| "Missing length bytes")?);
+
         let max_length = (bytes.len() - 4 - 4 - 4) as u32;
         if length > max_length {
             return Err("Not enough bytes for declared length".to_string());
         }
 
-        let chunk_type = ChunkType::new(bytes[4..8].try_into().unwrap()).unwrap();
+        let chunk_type = ChunkType::new(
+            bytes[4..8]
+                .try_into()
+                .map_err(|_| "Missing chunk type bytes")?,
+        )
+        .map_err(|e| format!("Invalid chunk type: {}", e))?;
 
         let data_start = 8;
         let data_end = data_start + length as usize;
         let data = bytes[data_start..data_end].to_vec();
 
-        let crc = u32::from_be_bytes(bytes[data_end..data_end + 4].try_into().unwrap());
+        let crc = u32::from_be_bytes(
+            bytes[data_end..data_end + 4]
+                .try_into()
+                .map_err(|_| "Invalid crc bytes")?,
+        );
         let mut digest = PNG_CRC.digest();
         digest.update(&chunk_type.bytes());
         digest.update(&data);
@@ -83,10 +94,7 @@ impl TryFrom<&[u8]> for Chunk {
 
 impl Display for Chunk {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for &b in &self.data {
-            write!(f, "{}", b as char)?;
-        }
-        Ok(())
+        write!(f, "{}", String::from_utf8_lossy(&self.data))
     }
 }
 

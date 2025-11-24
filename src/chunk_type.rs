@@ -59,7 +59,7 @@ impl FromStr for ChunkType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() != 4 {
-            return Err("".to_string());
+            return Err("ChunkType must be exactly 4 characters".to_string());
         }
 
         let bytes = s.as_bytes();

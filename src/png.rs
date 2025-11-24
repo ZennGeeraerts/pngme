@@ -24,7 +24,8 @@ impl Png {
     }
 
     pub fn remove_first_chunk(&mut self, chunk_type: &str) -> Result<Chunk, String> {
-        let chunk_type = ChunkType::from_str(chunk_type).unwrap();
+        let chunk_type =
+            ChunkType::from_str(chunk_type).map_err(|_| "Invalid chunk type string".to_string())?;
 
         if let Some(pos) = self
             .chunks
@@ -32,9 +33,9 @@ impl Png {
             .position(|x| x.chunk_type() == &chunk_type)
         {
             return Ok(self.chunks.remove(pos));
+        } else {
+            return Err("No chunk with chunk type found".to_string());
         }
-
-        Err("No chunk with chunk type found".to_string())
     }
 
     pub fn header(&self) -> &[u8; 8] {
@@ -46,17 +47,11 @@ impl Png {
     }
 
     pub fn chunk_by_type(&self, chunk_type: &str) -> Option<&Chunk> {
-        let chunk_type = ChunkType::from_str(chunk_type).unwrap();
+        let Ok(chunk_type) = ChunkType::from_str(chunk_type) else {
+            return None;
+        };
 
-        if let Some(pos) = self
-            .chunks
-            .iter()
-            .position(|x| x.chunk_type() == &chunk_type)
-        {
-            return self.chunks.get(pos);
-        }
-
-        return None;
+        return self.chunks.iter().find(|x| x.chunk_type() == &chunk_type);
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
@@ -78,7 +73,10 @@ impl TryFrom<&[u8]> for Png {
             return Err("Png cannot contain header".to_string());
         }
 
-        let header: [u8; 8] = bytes[0..8].try_into().unwrap();
+        let header: [u8; 8] = bytes[0..8]
+            .try_into()
+            .map_err(|_| "Could not read PNG header".to_string())?;
+
         if header != Png::STANDARD_HEADER {
             return Err("Header does not match png header".to_string());
         }
@@ -87,14 +85,23 @@ impl TryFrom<&[u8]> for Png {
         let mut chunks: Vec<Chunk> = Vec::new();
 
         while cursor < bytes.len() {
-            match Chunk::try_from(&bytes[cursor..]) {
-                Ok(chunk) => {
-                    let chunk_size = chunk.length() + 4 + 4 + 4;
-                    chunks.push(chunk);
-                    cursor += chunk_size as usize;
-                }
-                Err(_) => break,
+            if cursor + 8 > bytes.len() {
+                return Err("Unexpected end of PNG when reading chunk header".to_string());
             }
+
+            let length = u32::from_be_bytes(bytes[cursor..cursor + 4].try_into().unwrap()) as usize;
+
+            let chunk_total = 4 + 4 + length + 4;
+
+            if cursor + chunk_total > bytes.len() {
+                return Err("Chunk extends beyond PNG file".to_string());
+            }
+
+            let chunk_slice = &bytes[cursor..cursor + chunk_total];
+            let chunk = Chunk::try_from(chunk_slice)?;
+
+            chunks.push(chunk);
+            cursor += chunk_total;
         }
 
         return Ok(Png::new(chunks));
